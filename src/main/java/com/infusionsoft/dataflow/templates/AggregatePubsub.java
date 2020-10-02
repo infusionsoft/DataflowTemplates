@@ -1,7 +1,5 @@
 package com.infusionsoft.dataflow.templates;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +13,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -29,14 +28,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A template that groups pubsub messages by accountId and then re-emits an aggregate message after
@@ -79,6 +81,13 @@ public class AggregatePubsub {
         + "Nh (for hours, example: 2h).")
     String getWindowDuration();
     void setWindowDuration(String value);
+
+    @Description(
+            "The Cloud Pub/Sub subscription to consume from. "
+                    + "The name should be in the format of "
+                    + "projects/<project-id>/subscriptions/<subscription-name>.")
+    ValueProvider<String> getInputSubscription();
+    void setInputSubscription(ValueProvider<String> value);
   }
 
   public static class GroupByAccountId extends PTransform<PCollection<String>, PCollection<String>> {
@@ -107,24 +116,31 @@ public class AggregatePubsub {
     public PCollection<String> expand(PCollection<KV<String, Iterable<String>>> messages) {
       return messages.apply(MapElements.via(new SimpleFunction<KV<String, Iterable<String>>, String>() {
         public String apply(KV<String, Iterable<String>> kv) {
+          final long MEGABYTES_SIZE = 1000000;
           final Iterable<String> iterable = kv.getValue();
           final Iterator<String> iterator = iterable.iterator();
           final AtomicReference<String> accountId = new AtomicReference<>();
 
           final Map<String, Object> json = new LinkedHashMap<>();
-          json.put("messages", StreamSupport
-              .stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false)
-              .map(message -> {
-                try {
-                  final Map<String, Object> map = objectMapper.readValue(message, Map.class);
-                  accountId.compareAndSet(null, (String) map.get("accountId"));
+          final List<Map<String, Object>> messageList = new ArrayList<>();
 
-                  return map;
-                } catch (IOException e) {
-                  LOG.error("unable to deserialize: " + message, e);
-                  throw new IllegalStateException(e);
-                }
-              }).collect(Collectors.toList()));
+          StreamSupport
+                  .stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false)
+                  .forEach(message -> {
+                    try {
+                      // Cap at 5 MB
+                      if (objectMapper.writeValueAsBytes(messageList).length < (5 * MEGABYTES_SIZE)) {
+                        final Map<String, Object> map = objectMapper.readValue(message, Map.class);
+                        accountId.compareAndSet(null, (String) map.get("accountId"));
+
+                        messageList.add(map);
+                      }
+                    } catch (IOException e) {
+                      LOG.error("unable to deserialize: " + message, e);
+                      throw new IllegalStateException(e);
+                    }
+                  });
+          json.put("messages", messageList);
           json.put("accountId", accountId.get());
 
           try {
@@ -190,15 +206,25 @@ public class AggregatePubsub {
   public static PipelineResult run(Options options) {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
-
-    pipeline
-        .apply("Read Events", PubsubIO.readStrings()
-            .fromTopic(options.getPubsubReadTopic()))
-        .apply(options.getWindowDuration() + " Window",
-            Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
-        .apply("Group By Account", new GroupByAccountId())
-        .apply("Write Events", PubsubIO.writeStrings()
-            .to(options.getPubsubWriteTopic()));
+    if(options.getInputSubscription() != null) {
+      pipeline
+              .apply("Read Events", PubsubIO.readStrings()
+                      .fromSubscription(options.getInputSubscription()))
+              .apply(options.getWindowDuration() + " Window",
+                      Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+              .apply("Group By Account", new GroupByAccountId())
+              .apply("Write Events", PubsubIO.writeStrings()
+                      .to(options.getPubsubWriteTopic()));
+    } else {
+      pipeline
+              .apply("Read Events", PubsubIO.readStrings()
+                      .fromTopic(options.getPubsubReadTopic()))
+              .apply(options.getWindowDuration() + " Window",
+                      Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+              .apply("Group By Account", new GroupByAccountId())
+              .apply("Write Events", PubsubIO.writeStrings()
+                      .to(options.getPubsubWriteTopic()));
+    }
 
     // Execute the pipeline and return the result.
     return pipeline.run();
