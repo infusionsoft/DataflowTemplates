@@ -75,7 +75,7 @@
     <commons-io.version>2.4</commons-io.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
     <threetenbp.version>1.4.4</threetenbp.version>
-    <spring.version>5.2.8.RELEASE</spring.version>
+    <spring.version>5.2.21.RELEASE</spring.version>
     <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
     <autovalue.version>1.7.4</autovalue.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
