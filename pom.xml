@@ -55,7 +55,7 @@
     <commons-codec.version>1.15</commons-codec.version>
     <commons-io.version>2.11.0</commons-io.version>
     <conscrypt.version>2.5.2</conscrypt.version>
-    <hadoop.version>2.10.2</hadoop.version>
+    <hadoop.version>3.2.4</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <guava.version>31.0.1-jre</guava.version>
     <mockito-core.version>3.0.0</mockito-core.version>
