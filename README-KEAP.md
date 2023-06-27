@@ -8,7 +8,7 @@ To begin, from the project root:
 ```bash
 mvn install
 ```
-Some modules may fail to build but so long as the parent project, the metadata and the integration-test modules build successfully you can proceed to build the template and deploy it as below. 
+Some modules may fail to build but so long as the parent project, the metadata and the integration-test modules build successfully you can proceed to build the template and deploy it as below.
 
 ### Integration
 
