@@ -60,7 +60,9 @@
     <guava.version>31.0.1-jre</guava.version>
     <mockito-core.version>3.0.0</mockito-core.version>
     <log4j-2.version>2.17.2</log4j-2.version>
-    <json.version>20200518</json.version>
+    <!-- managed in Keap v1 dependencies -->
+    <json.version>20231013</json.version>
+    <!-- /managed in Keap v1 dependencies -->
     <junit.version>4.13.1</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>1.7.25</slf4j.version>
