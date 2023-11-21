@@ -29,7 +29,7 @@
   <artifactId>googlecloud-to-googlecloud</artifactId>
 
   <properties>
-    <derby.version>10.14.2.0</derby.version>
+    <derby.version>10.17.1.0</derby.version>
     <avro.version>1.8.2</avro.version>
     <dlp.version>2.1.0</dlp.version>
   </properties>
