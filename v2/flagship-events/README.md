@@ -5,6 +5,7 @@
 ### Deploy
 
 You can deploy to a given environment by calling the deploy script with one of "intg", "stge" or "prod":
+
 ```sh
 ./bin/deploy-flagship-events.sh --env {env}
 ```
