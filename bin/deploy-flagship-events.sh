@@ -68,6 +68,7 @@ main() {
   if [ ! -d "upstream" ]; then
     echo "Cloned repo does not exist"
     git clone --depth 1 --branch main "${DATAFLOW_RELEASE_TAG}" https://github.com/GoogleCloudPlatform/DataflowTemplates.git upstream
+    CLEAN=true
   else
     echo "Cloned repo exists"
     cd upstream
