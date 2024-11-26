@@ -16,3 +16,6 @@
 
 # vscode setting files
 .vscode/
+
+# Repo clone for build and deployment
+upstream/

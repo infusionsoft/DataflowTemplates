@@ -24,6 +24,7 @@ main() {
   trap 'echo "error on line ${LINENO}"' ERR
 
   ENVIRONMENT=intg
+  DATAFLOW_RELEASE_TAG=$(<DATAFLOW_RELEASE_TAG)
 
   ARGUMENTS=()
   while (( $# > 0 )); do
@@ -41,6 +42,10 @@ main() {
         VERIFY=true
         shift
         ;;
+      --clean )
+        CLEAN=true
+        shift
+        ;;
       * )
         ARGUMENTS+=("$1")
         shift
@@ -56,9 +61,49 @@ main() {
 
   gcloud config set project "is-events-dataflow-${ENVIRONMENT}"
 
+  if ! test -f ~/.config/gcloud/application_default_credentials.json; then
+    gcloud auth application-default login
+  fi
+
+  if [ ! -d "upstream" ]; then
+    echo "Cloned repo does not exist"
+    git clone --depth 1 --branch main "${DATAFLOW_RELEASE_TAG}" https://github.com/GoogleCloudPlatform/DataflowTemplates.git upstream
+  else
+    echo "Cloned repo exists"
+    cd upstream
+    git restore v2/pom.xml
+    cd ..
+  fi
+
+  # Add our modules to the cloned repo
+  cp -rf v2/* upstream/v2
+
+  find ./v2 -mindepth 1 -maxdepth 1 \( ! -name '.*' \) -type d -printf '<module>%P</module>\n' > MODULES
+
+  awk 'NR==FNR {replace = replace $0 RS; next}
+      {text = text $0 RS}
+      END {
+          print gensub(/<\/modules>/, replace "&", "g", text)
+      }' MODULES upstream/v2/pom.xml > UPDATED_V2_POM
+
+  mv UPDATED_V2_POM upstream/v2/pom.xml
+
+  rm MODULES
+
+  cd upstream
+
   # Just to alleviate pain from having mis-formatted files fail to build
   mvn spotless:apply -pl v2/flagship-events
 
+  # Build the uber jar if necessary or not built before
+  if [[ ${CLEAN} ]]; then
+    echo "Uber Jar build started"
+    mvn clean package -Dmaven.test.skip=true
+  fi
+
+  ###------------flagship-events--------------------
+
+  # Build flagship-events
   mvn clean package -pl v2/flagship-events -am
 
   gcloud dataflow flex-template build "gs://is-events-dataflow-${ENVIRONMENT}/templates/flagship-events.json" \
@@ -76,6 +121,10 @@ main() {
     --parameters maxNumWorkers="9" \
     --parameters numWorkers="1" \
     --parameters workerMachineType="n1-standard-1"
+
+  ###------------flagship-events--------------------
+
+  cd ..
 }
 
 main "$@"
