@@ -1,8 +1,8 @@
-# Flagship Events Dataflow Job
+# Keap Dataflow Templates
 
-## Build and Deploy
+## Building
 
-Java 17
+Requires Java 17
 
 ### DataflowTemplates Version
 
@@ -11,6 +11,8 @@ The version is pulled from the release tag specified in `DATAFLOW_RELEASE_TAG` a
 ### Add Modules
 
 To add new modules, create a subdirectory in the `/v2` hierarchy.
+
+## flagship-events
 
 ### Deploy
 
