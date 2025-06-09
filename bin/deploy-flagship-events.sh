@@ -68,7 +68,7 @@ main() {
   if [[ ${CLEAN} ]] || [ ! -d "upstream" ]; then
     echo "Cloning"
     rm -rf upstream
-    git clone --depth 1 --branch "2025-05-27-00_RC00" https://github.com/GoogleCloudPlatform/DataflowTemplates.git upstream
+    git clone --depth 1 --branch "${DATAFLOW_RELEASE_TAG}" --single-branch https://github.com/GoogleCloudPlatform/DataflowTemplates.git upstream
     CLEAN=true
   else
     echo "Cloned repo exists"
