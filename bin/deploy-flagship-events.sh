@@ -65,13 +65,15 @@ main() {
     gcloud auth application-default login
   fi
 
-  if [ ! -d "upstream" ]; then
-    echo "Cloned repo does not exist"
-    git clone --depth 1 --branch main "${DATAFLOW_RELEASE_TAG}" https://github.com/GoogleCloudPlatform/DataflowTemplates.git upstream
+  if [[ ${CLEAN} ]] || [ ! -d "upstream" ]; then
+    echo "Cloning"
+    rm -rf upstream
+    git clone --depth 1 --branch "${DATAFLOW_RELEASE_TAG}" --single-branch https://github.com/GoogleCloudPlatform/DataflowTemplates.git upstream
     CLEAN=true
   else
     echo "Cloned repo exists"
     cd upstream
+    # Reset the pom so we can add the modules again in case any new ones were added
     git restore v2/pom.xml
     cd ..
   fi
@@ -80,6 +82,7 @@ main() {
   cp -rf v2/* upstream/v2
 
   find ./v2 -mindepth 1 -maxdepth 1 \( ! -name '.*' \) -type d -printf '<module>%P</module>\n' > MODULES
+  MODULE_ARRAY=$(find ./v2 -mindepth 1 -maxdepth 1 \( ! -name '.*' \) -type d)
 
   awk 'NR==FNR {replace = replace $0 RS; next}
       {text = text $0 RS}
@@ -93,8 +96,8 @@ main() {
 
   cd upstream
 
-  # Just to alleviate pain from having mis-formatted files fail to build
-  mvn spotless:apply -pl v2/flagship-events
+  # Just to alleviate pain from having mis-formatted files fail to build, spotless the modules
+  for dir in $MODULE_ARRAY; do (mvn spotless:apply -pl "$dir"); done
 
   # Build the uber jar if necessary or not built before
   if [[ ${CLEAN} ]]; then
@@ -121,7 +124,9 @@ main() {
     --parameters env="${ENVIRONMENT}" \
     --parameters maxNumWorkers="9" \
     --parameters numWorkers="1" \
-    --parameters workerMachineType="n1-standard-1"
+    --parameters workerMachineType="n1-standard-1" \
+    --region "us-west1" \
+    --service-account-email "is-events-dataflow-${ENVIRONMENT}@is-events-dataflow-${ENVIRONMENT}.iam.gserviceaccount.com"
 
   ###------------flagship-events--------------------
 
