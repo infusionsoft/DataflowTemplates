@@ -125,7 +125,7 @@ main() {
     --parameters maxNumWorkers="9" \
     --parameters numWorkers="1" \
     --parameters workerMachineType="n1-standard-1" \
-    --region "us-west1" \
+    --region "us-east1" \
     --service-account-email "is-events-dataflow-${ENVIRONMENT}@is-events-dataflow-${ENVIRONMENT}.iam.gserviceaccount.com"
 
   ###------------flagship-events--------------------
