@@ -2,7 +2,10 @@
 
 ## Building
 
-Requires Java 17
+### Requirements
+* [Java 17](https://sdkman.io/install/)
+* [Maven](https://maven.apache.org/install.html)
+* [GCloud CLI](https://cloud.google.com/sdk/docs/install)
 
 ### DataflowTemplates Version
 
